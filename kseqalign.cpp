@@ -39,7 +39,7 @@ int main(int argc, char **argv){
 
 	int penalties[numPairs];
 		
-	uint64_t start = GetTimeStamp ();
+	uint64_t start = GetTimeStamp();
 
 	// return all the penalties and the hash of all allignments
 	std::string alignmentHash = getMinimumPenalties(genes,
@@ -59,7 +59,7 @@ int main(int argc, char **argv){
 	return 0;
 }
 
-inline int min3(int a, int b, int c){
+inline int min3(int a, int b, int c) {
     // Return the minimum of 3 variables
     return a < b ? (a < c ? a : c) : (b < c ? b : c);
 }
@@ -72,7 +72,7 @@ int **new2d (int width, int height)
 	int **dp = new int *[width];
 	size_t size = width;
 	size *= height;
-	int *dp0 = new int [size];
+	int *dp0 = new int[size];
 	if (!dp || !dp0)
 	{
 	    std::cerr << "getMinimumPenalty: new failed" << std::endl;
