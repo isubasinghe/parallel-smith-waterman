@@ -4,6 +4,7 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <omp.h>
 #include "sha512.hh"
 
 using namespace std;
@@ -31,13 +32,16 @@ int main(int argc, char **argv){
 	int k;
 	std::cin >> misMatchPenalty;
 	std::cin >> gapPenalty;
-	std::cin >> k;	
-	std::string genes[k];
-	for(int i=0;i<k;i++) std::cin >> genes[i];
+	std::cin >> k;
+
+	std::string *genes = new std::string[k];
+	for(int i=0;i<k;i++) {
+		std::cin >> genes[i];
+	}
 
 	int numPairs= k*(k-1)/2;
 
-	int penalties[numPairs];
+	int *penalties = new int[numPairs];
 		
 	uint64_t start = GetTimeStamp();
 
@@ -52,10 +56,14 @@ int main(int argc, char **argv){
 	// print the alginment hash
 	std::cout<<alignmentHash<<std::endl;
 
+	#pragma omp parallel for
 	for(int i=0;i<numPairs;i++){
 		std::cout<<penalties[i] << " ";
 	}
 	std::cout << std::endl;
+
+	delete genes;
+	delete penalties;
 	return 0;
 }
 
@@ -79,8 +87,11 @@ int **new2d (int width, int height)
 	    exit(1);
 	}
 	dp[0] = dp0;
-	for (int i = 1; i < width; i++)
-	    dp[i] = dp[i-1] + height;
+
+	for (int i = 1; i < width; i++) {
+		dp[i] = dp[i-1] + height;
+	}
+	    
 
 	return dp;
 }
@@ -97,7 +108,8 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 			int m = gene1.length(); // length of gene1
 			int n = gene2.length(); // length of gene2
 			int l = m+n;
-			int xans[l+1], yans[l+1];
+			int *xans = new int[l+1];
+			int *yans = new int[l+1];
 			penalties[probNum]=getMinimumPenalty(gene1,gene2,pxy,pgap,xans,yans);
 			// Since we have assumed the answer to be n+m long,
 			// we need to remove the extra gaps in the starting
@@ -135,6 +147,9 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 			std::cout << std::endl;
 
 			probNum++;
+
+			delete xans;
+			delete yans;
 		}
 	}
 	return alignmentHash;
