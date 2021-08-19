@@ -56,14 +56,13 @@ int main(int argc, char **argv){
 	// print the alginment hash
 	std::cout<<alignmentHash<<std::endl;
 
-	#pragma omp parallel for
 	for(int i=0;i<numPairs;i++){
 		std::cout<<penalties[i] << " ";
 	}
 	std::cout << std::endl;
 
-	delete genes;
-	delete penalties;
+	delete[] genes;
+	delete[] penalties;
 	return 0;
 }
 
@@ -148,8 +147,8 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 
 			probNum++;
 
-			delete xans;
-			delete yans;
+			delete[] xans;
+			delete[] yans;
 		}
 	}
 	return alignmentHash;
@@ -157,7 +156,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 
 // function to find out the minimum penalty
 // return the minimum penalty and put the aligned sequences in xans and yans
-int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans, int *yans)
+int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int * __restrict__ xans, int * __restrict__ yans)
 {
 	
 	int i, j; // intialising variables

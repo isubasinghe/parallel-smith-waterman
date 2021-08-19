@@ -1,5 +1,5 @@
 CC=g++
-CXXFLAGS=-I. -O3 -fopenmp -D_GLIBCXX_PARALLEL -march=native -flto -pedantic -Wall
+CXXFLAGS=-I. -g -march=native -flto -pedantic -Wall
 DEPS = sha512.h
 
 %.o: %.c $(DEPS)
