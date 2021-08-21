@@ -1,11 +1,14 @@
 // CPP program to solve the sequence alignment
-// problem. Adapted from https://www.geeksforgeeks.org/sequence-alignment-problem/ 
+// problem. Adapted from https://www.geeksforgeeks.org/sequence-alignment-problem/
 #include <sys/time.h>
 #include <string>
 #include <cstring>
 #include <iostream>
 #include <omp.h>
+
+#ifdef DEBUG_HASHES
 #include "sha512.hh"
+#endif
 
 using namespace std;
 
@@ -42,17 +45,17 @@ int main(int argc, char **argv){
 	int numPairs= k*(k-1)/2;
 
 	int *penalties = new int[numPairs];
-		
+
 	uint64_t start = GetTimeStamp();
 
 	// return all the penalties and the hash of all allignments
 	std::string alignmentHash = getMinimumPenalties(genes,
 		k,misMatchPenalty, gapPenalty,
 		penalties);
-		
+
 	// print the time taken to do the computation
 	printf("Time: %ld us\n", (uint64_t) (GetTimeStamp() - start));
-		
+
 	// print the alginment hash
 	std::cout<<alignmentHash<<std::endl;
 
@@ -90,7 +93,7 @@ int **new2d (int width, int height)
 	for (int i = 1; i < width; i++) {
 		dp[i] = dp[i-1] + height;
 	}
-	    
+
 
 	return dp;
 }
@@ -134,16 +137,19 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 			{
 				align2.append(1,(char)yans[a]);
 			}
+
+            #ifdef DEBUG_HASHES
 			std::string align1hash = sw::sha512::calculate(align1);
 			std::string align2hash = sw::sha512::calculate(align2);
 			std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
 			alignmentHash=sw::sha512::calculate(alignmentHash.append(problemhash));
-			
+
 			// Uncomment for testing purposes
 			std::cout << penalties[probNum] << std::endl;
 			std::cout << align1 << std::endl;
 			std::cout << align2 << std::endl;
 			std::cout << std::endl;
+            #endif
 
 			probNum++;
 
@@ -158,30 +164,32 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 // return the minimum penalty and put the aligned sequences in xans and yans
 int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int * __restrict__ xans, int * __restrict__ yans)
 {
-	
+
 	int i, j; // intialising variables
 
 	int m = x.length(); // length of gene1
 	int n = y.length(); // length of gene2
-	
+
 	// table for storing optimal substructure answers
 	int **dp = new2d (m+1, n+1);
 	size_t size = m + 1;
 	size *= n + 1;
 	memset (dp[0], 0, size);
 
-	// intialising the table
-	for (i = 0; i <= m; i++)
+    {
+
+    for (i = 0; i <= m; i++)
 	{
 		dp[i][0] = i * pgap;
 	}
-	for (i = 0; i <= n; i++)
+
+    for (i = 0; i <= n; i++)
 	{
 		dp[0][i] = i * pgap;
 	}
 
 	// calcuting the minimum penalty
-	for (i = 1; i <= m; i++)
+    for (i = 1; i <= m; i++)
 	{
 		for (j = 1; j <= n; j++)
 		{
@@ -191,21 +199,23 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int * __r
 			}
 			else
 			{
-				dp[i][j] = min3(dp[i - 1][j - 1] + pxy ,
+                dp[i][j] = min3(dp[i - 1][j - 1] + pxy ,
 						dp[i - 1][j] + pgap ,
 						dp[i][j - 1] + pgap);
 			}
 		}
 	}
 
+    }
+
 	// Reconstructing the solution
 	int l = n + m; // maximum possible length
-	
+
 	i = m; j = n;
-	
+
 	int xpos = l;
 	int ypos = l;
-	
+
 	while ( !(i == 0 || j == 0))
 	{
 		if (x[i - 1] == y[j - 1])
@@ -248,6 +258,6 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int * __r
 
 	delete[] dp[0];
 	delete[] dp;
-	
+
 	return ret;
 }
