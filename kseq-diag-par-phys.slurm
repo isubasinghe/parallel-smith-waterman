@@ -6,7 +6,7 @@
 #SBATCH --partition=physical
 #SBATCH --ntasks=1
 #SBATCH --time=01:00:00
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=24
 #SBATCH --mem=36G
 
 
