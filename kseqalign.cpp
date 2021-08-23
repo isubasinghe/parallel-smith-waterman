@@ -176,35 +176,46 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int * __r
 	size *= n + 1;
 	memset (dp[0], 0, size);
 
+	#pragma omp parallel
     {
 
-    for (i = 0; i <= m; i++)
-	{
-		dp[i][0] = i * pgap;
-	}
-
-    for (i = 0; i <= n; i++)
-	{
-		dp[0][i] = i * pgap;
-	}
-
-	// calcuting the minimum penalty
-    for (i = 1; i <= m; i++)
-	{
-		for (j = 1; j <= n; j++)
+		for (i = 0; i <= m; i++)
 		{
-			if (x[i - 1] == y[j - 1])
+			dp[i][0] = i * pgap;
+		}
+
+		for (i = 0; i <= n; i++)
+		{
+			dp[0][i] = i * pgap;
+		}
+
+		const int N = m + 1;
+		const int M = n + 1;
+		for(int i=0;i<=N+M-2; i++)
+		{
+			#pragma omp for simd
+			for(int j = 0; j<=i; j++)
 			{
-				dp[i][j] = dp[i - 1][j - 1];
-			}
-			else
-			{
-                dp[i][j] = min3(dp[i - 1][j - 1] + pxy ,
-						dp[i - 1][j] + pgap ,
-						dp[i][j - 1] + pgap);
+				int a = j, b = i-j;
+				if(i%2==0)
+					swap(a, b);
+				if(a>=N||b>=M)
+					continue;
+				if (a != 0 && b != 0) {
+					if (x[a - 1] == y[b - 1])
+					{
+						dp[a][b] = dp[a - 1][b - 1];
+					}
+					else
+					{
+						dp[a][b] = min3(dp[a - 1][b - 1] + pxy ,
+								dp[a - 1][b] + pgap ,
+								dp[a][b - 1] + pgap);
+					}
+				}
 			}
 		}
-	}
+
 
     }
 
