@@ -13,8 +13,11 @@ using namespace std;
 
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
                                 int *penalties);
+
 int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *xans, int *yans);
+
+
 
 /*
 Examples of sha512 which returns a std::string
@@ -41,7 +44,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   std::cin >> gapPenalty;
   std::cin >> k;
 
-  auto *genes = new std::string[k];
+  auto genes = new std::string[k];
+
   for (int i = 0; i < k; i++) {
     std::cin >> genes[i];
   }
@@ -52,15 +56,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
 
   uint64_t start = GetTimeStamp();
 
-  // return all the penalties and the hash of all allignments
-  std::string alignmentHash =
-      getMinimumPenalties(genes, k, misMatchPenalty, gapPenalty, penalties);
-
-  // print the time taken to do the computation
-  printf("Time: %ld us\n", (uint64_t)(GetTimeStamp() - start));
-
-  // print the alginment hash
+  std::string alignmentHash = getMinimumPenalties(genes, k, misMatchPenalty, gapPenalty, penalties);
+  std::cout << GetTimeStamp() - start << " us\n";
   std::cout << "ALIGNMENT: " << alignmentHash << std::endl;
+
+  // return all the penalties and the hash of all allignments
 
   for (int i = 0; i < numPairs; i++) {
     std::cout << penalties[i] << " ";
@@ -72,6 +72,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   return 0;
 }
 
+[[gnu::always_inline]] [[gnu::hot]]
 inline int min3(int a, int b, int c) {
   // Return the minimum of 3 variables
   return a < b ? (a < c ? a : c) : (b < c ? b : c);
@@ -100,9 +101,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 
   int probNum = 0;
 
-  // #pragma omp parallel shared(probNum, alignmentHash)
   {
-    // #pragma omp for collapse(2)
     for (int i = 1; i < k; i++) {
       for (int j = 0; j < i; j++) {
         auto gene1 = genes[i];
@@ -140,7 +139,6 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
         std::string align2hash = sw::sha512::calculate(align2);
         std::string problemhash =
             sw::sha512::calculate(align1hash.append(align2hash));
-        // #pragma omp critical
         {
 
           alignmentHash =
@@ -165,10 +163,10 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 
 // function to find out the minimum penalty
 // return the minimum penalty and put the aligned sequences in xans and yans
+[[gnu::hot]]
 int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *__restrict__ xans, int *__restrict__ yans) {
 
-  int i, j; // intialising variables
 
   int m = static_cast<int>(x.length()); // length of gene1
   int n = static_cast<int>(y.length()); // length of gene2
@@ -179,41 +177,46 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   size *= n + 1;
   memset(dp[0], 0, size);
 
-  for (i = 0; i <= m; i++) {
+
+  for (int i = 0; i <= m; i++) {
     dp[i][0] = i * pgap;
   }
 
-  for (i = 0; i <= n; i++) {
+  for (int i = 0; i <= n; i++) {
     dp[0][i] = i * pgap;
   }
 
   const int N = m + 1;
   const int M = n + 1;
 
-  for (i = 0; i <= N + M - 2; i++) {
-    for (j = 0; j <= i; j++) {
-      // std::cout << i << ", " << j << std::endl;
-      int a = j, b = i - j;
-      if (i % 2 == 0)
-        swap(a, b);
-      if (a >= N || b >= M)
-        continue;
-      if (a != 0 && b != 0) {
-        if (x[a - 1] == y[b - 1]) {
-          dp[a][b] = dp[a - 1][b - 1];
-        } else {
-          dp[a][b] = min3(dp[a - 1][b - 1] + pxy, dp[a - 1][b] + pgap,
-                          dp[a][b - 1] + pgap);
+  #pragma omp parallel default(none) shared(N, M, x, y, dp, pgap, pxy)
+  {
+    for (int i = 0; i <= N + M - 2; i++)
+    {
+      #pragma omp for simd
+      for (int j = 0; j <= i; j++)
+      {
+        int a = j, b = i - j;
+        if (i % 2 == 0)
+          swap(a, b);
+        if (a >= N || b >= M)
+          continue;
+        if (a != 0 && b != 0) {
+          if (x[a - 1] == y[b - 1]) {
+            dp[a][b] = dp[a - 1][b - 1];
+          } else {
+            dp[a][b] = min3(dp[a - 1][b - 1] + pxy, dp[a - 1][b] + pgap,
+                            dp[a][b - 1] + pgap);
+          }
         }
       }
     }
   }
-
   // Reconstructing the solution
   int l = n + m; // maximum possible length
 
-  i = m;
-  j = n;
+  int i = m;
+  int j = n;
 
   int xpos = l;
   int ypos = l;
