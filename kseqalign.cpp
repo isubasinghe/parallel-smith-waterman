@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <set>
 
 #include "sha512.hh"
 
@@ -33,6 +34,16 @@ uint64_t GetTimeStamp() {
       .count();
 }
 
+void has(std::set<std::tuple<int, int>> &pos, int **dp, int i, int j) {
+	auto tup = std::make_tuple(i, j);
+
+	if(pos.find(tup) == pos.end()) {
+		std::cout << "(" << i << ", " << j << ")" << std::endl;
+    std::cout << "VAL: " << dp[i][j] << std::endl;
+    std::cout << std::endl << std::endl;
+    pos.insert(tup);
+	}
+}
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   int misMatchPenalty;
   int gapPenalty;
@@ -161,6 +172,54 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
   return alignmentHash;
 }
 
+
+[[gnu::always_inline]] [[gnu::hot]]
+inline void diagonalise(int **dp, int width, int height, int di, int dj, std::string &x, std::string &y, int pxy, int pgap, std::set<std::tuple<int, int>> &pos) {
+  int new_width = width / di;
+  int new_height = height / dj;
+
+  int diagonals = new_width + new_height + ((width%di  + height%dj) > 0 ? 1 : 0);
+
+  int outer_i = 0;
+  int outer_j = 0;
+
+  for(int d = 0; d < diagonals; d++) {
+    int diff_i = outer_i;
+    int diff_j = height - outer_j -1;
+
+    int diag_i = 1 + (diff_i / di);
+    int diag_j = 1 + (diff_j / dj);
+    int length = std::min(diag_i, diag_j);
+
+    for(int tile=0; tile < length; tile++) {
+      int inner_i = outer_i - (tile * di);
+      int inner_j = outer_j + (tile * dj);
+
+      int imax = std::min(inner_i + di, width);
+      int jmax = std::min(inner_j + dj, height);
+      for(int i = inner_i; i < imax; i++) {
+        for(int j = inner_j; j < jmax; j++) {
+          if(i==0 || j==0) {
+            continue;
+          }
+          if(x[j-1] == y[i-1]) {
+            dp[j][i] = dp[j-1][i-1];
+          }else {
+            dp[j][i] = min3(dp[j-1][i-1] + pxy, dp[j-1][i] + pgap, dp[j][i-1] + pgap);
+          }
+        }
+      }
+    }
+
+    outer_i += di;
+    if(outer_i >= width) {
+      outer_i = width - di;
+      outer_j += dj;
+    }
+  }
+
+}
+
 // function to find out the minimum penalty
 // return the minimum penalty and put the aligned sequences in xans and yans
 [[gnu::hot]]
@@ -189,71 +248,87 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   const int N = m + 1;
   const int M = n + 1;
 
-  #pragma omp parallel default(none) shared(N, M, x, y, dp, pgap, pxy)
-  {
-    for (int i = 0; i <= N + M - 2; i++)
-    {
-      #pragma omp for simd
-      for (int j = 0; j <= i; j++)
-      {
-        int a = j, b = i - j;
-        if (i % 2 == 0)
-          swap(a, b);
-        if (a >= N || b >= M)
-          continue;
-        if (a != 0 && b != 0) {
-          if (x[a - 1] == y[b - 1]) {
-            dp[a][b] = dp[a - 1][b - 1];
-          } else {
-            dp[a][b] = min3(dp[a - 1][b - 1] + pxy, dp[a - 1][b] + pgap,
-                            dp[a][b - 1] + pgap);
-          }
-        }
-      }
-    }
-  }
-  // Reconstructing the solution
-  int l = n + m; // maximum possible length
+  std::set<std::tuple<int, int>> pos;
 
-  int i = m;
-  int j = n;
+  diagonalise(dp, M, N, 10, 10, x, y, pxy, pgap, pos);
 
-  int xpos = l;
-  int ypos = l;
+  // {
+  //   for (int i = 0; i <= N + M - 2; i++)
+  //   {
+  //     for (int j = 0; j <= i; j++)
+  //     {
+  //       int a = j, b = i - j;
+  //       if (i % 2 == 0)
+  //         swap(a, b);
+  //       if (a >= N || b >= M)
+  //         continue;
+  //       if (a != 0 && b != 0) {
+  //         if (x[a - 1] == y[b - 1]) {
+  //           dp[a][b] = dp[a - 1][b - 1];
+  //         } else {
+  //           dp[a][b] = min3(dp[a - 1][b - 1] + pxy, dp[a - 1][b] + pgap,
+  //                           dp[a][b - 1] + pgap);
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
-  while (!(i == 0 || j == 0)) {
-    if (x[i - 1] == y[j - 1] || dp[i - 1][j - 1] + pxy == dp[i][j]) {
-      xans[xpos--] = (int)x[i - 1];
-      yans[ypos--] = (int)y[j - 1];
-      i--;
-      j--;
-    } else if (dp[i - 1][j] + pgap == dp[i][j]) {
-      xans[xpos--] = (int)x[i - 1];
-      yans[ypos--] = (int)'_';
-      i--;
-    } else if (dp[i][j - 1] + pgap == dp[i][j]) {
-      xans[xpos--] = (int)'_';
-      yans[ypos--] = (int)y[j - 1];
-      j--;
-    }
-  }
-  while (xpos > 0) {
-    if (i > 0)
-      xans[xpos--] = (int)x[--i];
-    else
-      xans[xpos--] = (int)'_';
-  }
-  while (ypos > 0) {
-    if (j > 0)
-      yans[ypos--] = (int)y[--j];
-    else
-      yans[ypos--] = (int)'_';
-  }
+	// Reconstructing the solution
+	int l = n + m; // maximum possible length
 
-  int ret = dp[m][n];
+	int i = m; int j = n;
 
-  delete[] dp[0];
-  delete[] dp;
+	int xpos = l;
+	int ypos = l;
 
+	while ( !(i == 0 || j == 0))
+	{
+
+		// has(pos, dp, i, j);
+		// has(pos, dp, i-1, j-1);
+		// has(pos, dp, i-1, j);
+		// has(pos, dp, i, j-1);
+
+		if (x[i - 1] == y[j - 1])
+		{
+			xans[xpos--] = (int)x[i - 1];
+			yans[ypos--] = (int)y[j - 1];
+			i--; j--;
+		}
+		else if (dp[i - 1][j - 1] + pxy == dp[i][j])
+		{
+			xans[xpos--] = (int)x[i - 1];
+			yans[ypos--] = (int)y[j - 1];
+			i--; j--;
+		}
+		else if (dp[i - 1][j] + pgap == dp[i][j])
+		{
+			xans[xpos--] = (int)x[i - 1];
+			yans[ypos--] = (int)'_';
+			i--;
+		}
+		else if (dp[i][j - 1] + pgap == dp[i][j])
+		{
+			xans[xpos--] = (int)'_';
+			yans[ypos--] = (int)y[j - 1];
+			j--;
+		}
+	}
+	while (xpos > 0)
+	{
+		if (i > 0) xans[xpos--] = (int)x[--i];
+		else xans[xpos--] = (int)'_';
+	}
+	while (ypos > 0)
+	{
+		if (j > 0) yans[ypos--] = (int)y[--j];
+		else yans[ypos--] = (int)'_';
+	}
+
+	int ret = dp[m][n];
+
+	delete[] dp[0];
+	delete[] dp;
   return ret;
 }

@@ -49,8 +49,8 @@ void diagonalise(int **dp, int width, int height, int di, int dj) {
 
     for(int tile=0; tile < length; tile++) {
       std::cout << "TILE_START" << std::endl;
-      int inner_i = outer_i - (tile * di);
-      int inner_j = outer_j + (tile * dj);
+      int inner_i = std::max(1, outer_i - (tile * di));
+      int inner_j = std::max(1, outer_j + (tile * dj));
 
       int imax = std::min(inner_i + di, width);
       int jmax = std::min(inner_j + dj, height);
