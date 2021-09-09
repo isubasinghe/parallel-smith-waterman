@@ -7,7 +7,7 @@
 #include <iostream>
 #include <string>
 #include <set>
-
+#include <immintrin.h>
 #include "sha512.hh"
 
 using namespace std;
@@ -28,12 +28,14 @@ sw::sha512::calculate(&data, sizeof(data)) // hash of any block of data
 */
 
 // Return current wallclock time, for performance measurement
+[[gnu::cold]]
 uint64_t GetTimeStamp() {
   return chrono::duration_cast<chrono::microseconds>(
              chrono::system_clock::now().time_since_epoch())
       .count();
 }
 
+[[gnu::cold]]
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   int misMatchPenalty;
   int gapPenalty;
@@ -96,6 +98,7 @@ int **new2d(int width, int height) {
   return dp;
 }
 
+[[gnu::cold]]
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
                                 int *penalties) {
   std::string alignmentHash;
@@ -182,16 +185,13 @@ inline void diagonalise(int **dp, int width, int height, int di, int dj, std::st
     int length = std::min(diag_i, diag_j);
 
     for(int tile=0; tile < length; tile++) {
-      int inner_i = outer_i - (tile * di);
-      int inner_j = outer_j + (tile * dj);
+      int inner_i = std::max(1, outer_i - (tile * di));
+      int inner_j = std::max(1, outer_j + (tile * dj));
 
       int imax = std::min(inner_i + di, width);
       int jmax = std::min(inner_j + dj, height);
       for(int i = inner_i; i < imax; i++) {
         for(int j = inner_j; j < jmax; j++) {
-          if(i==0 || j==0) {
-            continue;
-          }
           if(x[j-1] == y[i-1]) {
             dp[j][i] = dp[j-1][i-1];
           }else {
@@ -239,7 +239,6 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   const int M = n + 1;
 
   diagonalise(dp, M, N, 2, 2, x, y, pxy, pgap);
-
 	// Reconstructing the solution
 	int l = n + m; // maximum possible length
 
