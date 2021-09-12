@@ -1,6 +1,9 @@
 #include <iostream>
+#include <chrono>
 #include <cstdio>
-
+#include <new>
+#include <memory>
+using namespace std;
 
 // equivalent of  int *dp[width] = new int[height][width]
 // but works for width not known at compile time.
@@ -71,13 +74,28 @@ void diagonalise(int **dp, int width, int height, int di, int dj) {
   }
 }
 
-int main() {
-    int width = 9;
-    int height = 5;
-    int **matrix = new2d(width, height);
-    setMatrix(matrix, width, height, 0);
-    diagonalise(matrix, width, height, 2, 2);
-    delete[] matrix;
+uint64_t GetTimeStamp() {
+  return chrono::duration_cast<chrono::microseconds>(
+             chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+int main(int argc, char *argv[]) {
+  if(argc != 3) {
+    return 0;
+  }
+  int pgap = atoi(argv[1]);
+  int sz = atoi(argv[2]);
 
+  int *arr = static_cast<int *>(aligned_alloc(32, sz));
+  arr[0] = 1;
+
+  auto start = GetTimeStamp();
+
+  // #pragma omp parallel for simd
+  for(int i = 1; i < sz; i++) {
+    arr[i] = i * pgap + (arr[i-1]);
+  }
+  std::cout << GetTimeStamp() - start << std::endl;
+  std::cout << arr[sz-1] << std::endl;
   return 0;
 }

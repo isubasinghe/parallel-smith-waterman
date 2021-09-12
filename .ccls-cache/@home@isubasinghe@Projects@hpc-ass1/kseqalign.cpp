@@ -227,8 +227,8 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *__restrict__ xans, int *__restrict__ yans) {
 
 
-  int m = static_cast<int>(x.length()); // length of gene1
-  int n = static_cast<int>(y.length()); // length of gene2
+  alignas(sizeof(int)*8) int m = static_cast<int>(x.length()); // length of gene1
+  alignas(sizeof(int)*8) int n = static_cast<int>(y.length()); // length of gene2
 
   // table for storing optimal substructure answers
   int **dp = new2d(m + 1, n + 1);
@@ -236,15 +236,17 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   size *= n + 1;
   memset(dp[0], 0, size);
 
+  #pragma omp parallel default(none) shared(dp, m, n, pgap)
+  {
+    #pragma omp simd linear(pgap: pgap)
+    for (int i = 0; i <= m; i++) {
+      dp[i][0] = i * pgap;
+    }
 
-  for (int i = 0; i <= m; i++) {
-    dp[i][0] = i * pgap;
+    for (int i = 0; i <= n; i++) {
+      dp[0][i] = i * pgap;
+    }
   }
-
-  for (int i = 0; i <= n; i++) {
-    dp[0][i] = i * pgap;
-  }
-
   const int N = m + 1;
   const int M = n + 1;
 
