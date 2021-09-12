@@ -40,6 +40,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   int misMatchPenalty;
   int gapPenalty;
   int k;
+  FILE *fp = freopen("mseq.dat", "r", stdin);
   // #ifdef DEBUG_BUILD
   // freopen("mseq-simple.dat", "r", stdin);
   // #endif
@@ -70,6 +71,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   }
   std::cout << std::endl;
 
+  fclose(fp);
   delete[] genes;
   delete[] penalties;
   return 0;
