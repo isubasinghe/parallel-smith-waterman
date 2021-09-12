@@ -34,4 +34,7 @@
 # Data files
 *.dat
 
+.ccls-cache
+
 kseqalign
+main
