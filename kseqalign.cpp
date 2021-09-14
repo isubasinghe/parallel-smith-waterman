@@ -12,10 +12,10 @@
 
 using namespace std;
 
-std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
+static std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
                                 int *penalties);
 
-int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
+static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *xans, int *yans);
 
 
@@ -29,7 +29,7 @@ sw::sha512::calculate(&data, sizeof(data)) // hash of any block of data
 
 // Return current wallclock time, for performance measurement
 [[gnu::cold]]
-uint64_t GetTimeStamp() {
+static uint64_t GetTimeStamp() {
   return chrono::duration_cast<chrono::microseconds>(
              chrono::system_clock::now().time_since_epoch())
       .count();
@@ -86,7 +86,7 @@ inline int min3(int a, int b, int c) {
 // equivalent of  int *dp[width] = new int[height][width]
 // but works for width not known at compile time.
 // (Delete structure by  delete[] dp[0]; delete[] dp;)
-int **new2d(int width, int height) {
+static int **new2d(int width, int height) {
   int **dp = new int *[width];
   size_t size = width;
   size *= height;
@@ -101,7 +101,7 @@ int **new2d(int width, int height) {
 }
 
 [[gnu::cold]]
-std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
+static std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
                                 int *penalties) {
   std::string alignmentHash;
 
@@ -169,7 +169,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 
 
 [[gnu::always_inline]] [[gnu::hot]]
-inline void diagonalise(int **dp, int width, int height, int di, int dj, std::string &x, std::string &y, int pxy, int pgap) {
+inline void diagonalise(int **dp, int width, int height, int di, int dj, const std::string &x, const std::string &y, int pxy, int pgap) {
   int new_width = width / di;
   int new_height = height / dj;
 
@@ -223,7 +223,7 @@ inline void diagonalise(int **dp, int width, int height, int di, int dj, std::st
 // function to find out the minimum penalty
 // return the minimum penalty and put the aligned sequences in xans and yans
 [[gnu::hot]]
-int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
+static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *__restrict__ xans, int *__restrict__ yans) {
 
 
