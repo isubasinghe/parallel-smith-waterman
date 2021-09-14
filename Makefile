@@ -1,6 +1,6 @@
 CC=g++
 CXX=g++
-CXXFLAGS=-I. -fopenmp -static-libstdc++ -O3 -fno-exceptions -fno-rtti -march=native -funroll-loops -pedantic -Wall
+CXXFLAGS=-I. -static-libstdc++ -O3 -fno-exceptions -fno-rtti -march=native -funroll-loops -pedantic -Wall
 DEPS = sha512.h
 
 %.o: %.c $(DEPS)
