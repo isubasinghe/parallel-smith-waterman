@@ -41,7 +41,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   int misMatchPenalty;
   int gapPenalty;
   int k;
-  FILE *fp = freopen("mseq.dat", "r", stdin);
+  // FILE *fp = freopen("mseq.dat", "r", stdin);
   // #ifdef DEBUG_BUILD
   // freopen("mseq-simple.dat", "r", stdin);
   // #endif
@@ -72,7 +72,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   }
   std::cout << std::endl;
 
-  fclose(fp);
+  // fclose(fp);
   delete[] genes;
   delete[] penalties;
   return 0;
@@ -246,7 +246,6 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   int **dp = new2d(m + 1, n + 1);
   size_t size = m + 1;
   size *= n + 1;
-  memset(dp[0], 0, size);
 
   #pragma omp parallel default(none) shared(dp, m, n, pgap)
   {
