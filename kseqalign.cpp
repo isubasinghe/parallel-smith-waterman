@@ -43,7 +43,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   int k;
   // FILE *fp = freopen("mseq.dat", "r", stdin);
   // #ifdef DEBUG_BUILD
-  // freopen("mseq-simple.dat", "r", stdin);
+  // freopen("mseq.dat", "r", stdin);
   // #endif
   std::cin >> misMatchPenalty;
   std::cin >> gapPenalty;
@@ -261,7 +261,7 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   const int N = m + 1;
   const int M = n + 1;
 
-  diagonalise(dp, M, N, M/(8*2) , N/(8*2) , x, y, pxy, pgap);
+  diagonalise(dp, M, N, M/(8+5) , N/(8+5) , x, y, pxy, pgap);
 	// Reconstructing the solution
 	int l = n + m; // maximum possible length
 
