@@ -1,4 +1,3 @@
-
 #!/bin/bash
 #
 #SBATCH --job-name=kseq-sin-phys
