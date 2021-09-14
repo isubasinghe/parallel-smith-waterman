@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <omp.h>
 #include <immintrin.h>
 #include <numa.h>
 #include "sha512.hh"
@@ -19,7 +20,7 @@ static std::string getMinimumPenalties(std::string *genes, int k, int pxy, int p
 static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *xans, int *yans);
 
-
+omp_allocator_handle_t alloc_hndl;
 
 /*
 Examples of sha512 which returns a std::string
@@ -38,6 +39,12 @@ static uint64_t GetTimeStamp() {
 
 [[gnu::cold]]
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
+  omp_memspace_handle_t memspace = omp_default_mem_space;
+
+  omp_alloctrait_t traits[3] = { {omp_atk_alignment, 32}, {omp_atk_sync_hint, omp_atv_serialized}, {omp_atk_partition, omp_atv_environment} };
+
+  alloc_hndl = omp_init_allocator(memspace, 3, traits);
+
   int misMatchPenalty;
   int gapPenalty;
   int k;
@@ -88,12 +95,12 @@ inline int min3(int a, int b, int c) {
 // but works for width not known at compile time.
 // (Delete structure by  delete[] dp[0]; delete[] dp;)
 static int **new2d(int width, int height) {
-  int **dp = new int *[width];
+  int **dp = static_cast<int **>(omp_alloc(sizeof(int *)*width, alloc_hndl));
   size_t size = width;
   size *= height;
   // not catching malloc error
   // as it is not reliable due to overcommitting etc.
-  int *dp0 = new int[size];
+  int *dp0 = static_cast<int *>(omp_alloc(sizeof(int) * size, alloc_hndl));
   dp[0] = dp0;
 
   #pragma omp parallel default(none) shared(dp0, size, dp, width, height)
@@ -310,7 +317,9 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
 
 	int ret = dp[m][n];
 
-	delete[] dp[0];
-	delete[] dp;
+  omp_free(dp[0], alloc_hndl);
+  omp_free(dp, alloc_hndl);
+	// delete[] dp[0];
+	// delete[] dp;
   return ret;
 }
