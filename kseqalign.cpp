@@ -8,6 +8,7 @@
 #include <string>
 #include <set>
 #include <immintrin.h>
+#include <numa.h>
 #include "sha512.hh"
 
 using namespace std;
@@ -94,8 +95,19 @@ static int **new2d(int width, int height) {
   // as it is not reliable due to overcommitting etc.
   int *dp0 = new int[size];
   dp[0] = dp0;
-  for (int i = 1; i < width; i++) {
-    dp[i] = dp[i - 1] + height;
+
+  #pragma omp parallel default(none) shared(dp0, size, dp, width, height)
+  {
+
+    #pragma omp for nowait
+    for(size_t i=0; i < size; i++) {
+      dp0[i] = 0;
+    }
+
+    #pragma omp for
+    for (int i = 1; i < width; i++) {
+      dp[i] = i*height + dp0;
+    }
   }
   return dp;
 }
@@ -236,19 +248,21 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   size *= n + 1;
   memset(dp[0], 0, size);
 
-
-  for (int i = 0; i <= m; i++) {
-    dp[i][0] = i * pgap;
+  #pragma omp parallel default(none) shared(dp, m, n, pgap)
+  {
+    #pragma omp for simd nowait
+    for (int i = 0; i <= m; i++) {
+      dp[i][0] = i * pgap;
+    }
+    #pragma omp for
+    for (int i = 0; i <= n; i++) {
+      dp[0][i] = i * pgap;
+    }
   }
-
-  for (int i = 0; i <= n; i++) {
-    dp[0][i] = i * pgap;
-  }
-
   const int N = m + 1;
   const int M = n + 1;
 
-  diagonalise(dp, M, N, 20, 20, x, y, pxy, pgap);
+  diagonalise(dp, M, N, M/(8*2) , N/(8*2) , x, y, pxy, pgap);
 	// Reconstructing the solution
 	int l = n + m; // maximum possible length
 
