@@ -41,14 +41,13 @@ static uint64_t GetTimeStamp() {
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   omp_memspace_handle_t memspace = omp_default_mem_space;
 
-  omp_alloctrait_t traits[3] = { {omp_atk_alignment, 32}, {omp_atk_sync_hint, omp_atv_serialized}, {omp_atk_partition, omp_atv_environment} };
+  omp_alloctrait_t traits[4] = { {omp_atk_alignment, 32}, {omp_atk_sync_hint, omp_atv_serialized}, {omp_atk_partition, omp_atv_environment}, {omp_atk_partition, omp_atv_interleaved} };
 
-  alloc_hndl = omp_init_allocator(memspace, 3, traits);
+  alloc_hndl = omp_init_allocator(memspace, 4, traits);
 
   int misMatchPenalty;
   int gapPenalty;
   int k;
-  // FILE *fp = freopen("mseq.dat", "r", stdin);
   // #ifdef DEBUG_BUILD
   // freopen("mseq-simple.dat", "r", stdin);
   // #endif
@@ -79,7 +78,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   }
   std::cout << std::endl;
 
-  // fclose(fp);
   delete[] genes;
   delete[] penalties;
   return 0;
@@ -94,7 +92,7 @@ inline int min3(int a, int b, int c) {
 // equivalent of  int *dp[width] = new int[height][width]
 // but works for width not known at compile time.
 // (Delete structure by  delete[] dp[0]; delete[] dp;)
-static int **new2d(int width, int height) {
+static int **new2d(int width, int height, int pgap) {
   int **dp = static_cast<int **>(omp_alloc(sizeof(int *)*width, alloc_hndl));
   size_t size = width;
   size *= height;
@@ -103,18 +101,14 @@ static int **new2d(int width, int height) {
   int *dp0 = static_cast<int *>(omp_alloc(sizeof(int) * size, alloc_hndl));
   dp[0] = dp0;
 
-  #pragma omp parallel default(none) shared(dp0, size, dp, width, height)
-  {
 
-    #pragma omp for nowait
-    for(size_t i=0; i < size; i++) {
-      dp0[i] = 0;
-    }
+  for(size_t i=0; i < size; i++) {
+    dp0[i] = 0;
+  }
 
-    #pragma omp for
-    for (int i = 1; i < width; i++) {
-      dp[i] = i*height + dp0;
-    }
+  for (int i = 0; i < width; i++) {
+    dp[i] = i*height + dp0;
+    dp[i][0] = i * pgap;
   }
   return dp;
 }
@@ -250,20 +244,13 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   int n = static_cast<int>(y.length()); // length of gene2
 
   // table for storing optimal substructure answers
-  int **dp = new2d(m + 1, n + 1);
+  int **dp = new2d(m + 1, n + 1, pgap);
   size_t size = m + 1;
   size *= n + 1;
 
-  #pragma omp parallel default(none) shared(dp, m, n, pgap)
-  {
-    #pragma omp for simd nowait
-    for (int i = 0; i <= m; i++) {
-      dp[i][0] = i * pgap;
-    }
-    #pragma omp for
-    for (int i = 0; i <= n; i++) {
-      dp[0][i] = i * pgap;
-    }
+  #pragma omp parallel for default(none) shared(dp, pgap, n)
+  for (int i = 0; i <= n; i++) {
+    dp[0][i] = i * pgap;
   }
   const int N = m + 1;
   const int M = n + 1;
