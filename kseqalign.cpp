@@ -87,28 +87,49 @@ inline int min3(int a, int b, int c) {
 // equivalent of  int *dp[width] = new int[height][width]
 // but works for width not known at compile time.
 // (Delete structure by  delete[] dp[0]; delete[] dp;)
-static int **new2d(int width, int height) {
+// static int **new2d(int width, int height) {
+//   int **dp = new int *[width];
+//   size_t size = width;
+//   size *= height;
+//   // not catching malloc error
+//   // as it is not reliable due to overcommitting etc.
+//   int *dp0 = new int[size];
+//   dp[0] = dp0;
+
+//   #pragma omp parallel default(none) shared(dp0, size, dp, width, height)
+//   {
+
+//     #pragma omp for nowait
+//     for(size_t i=0; i < size; i++) {
+//       dp0[i] = 0;
+//     }
+
+//     #pragma omp for
+//     for (int i = 1; i < width; i++) {
+//       dp[i] = i*height + dp0;
+//     }
+//   }
+//   return dp;
+// }
+
+static int **new2d (int width, int height, int pgap) {
   int **dp = new int *[width];
   size_t size = width;
   size *= height;
-  // not catching malloc error
-  // as it is not reliable due to overcommitting etc.
-  int *dp0 = new int[size];
+
+  int *dp0 = new int [size];
+
+  for(size_t i =0; i < size; i++) {
+    dp0[i] = 0;
+  }
+
   dp[0] = dp0;
 
-  #pragma omp parallel default(none) shared(dp0, size, dp, width, height)
-  {
-
-    #pragma omp for nowait
-    for(size_t i=0; i < size; i++) {
-      dp0[i] = 0;
-    }
-
-    #pragma omp for
-    for (int i = 1; i < width; i++) {
-      dp[i] = i*height + dp0;
-    }
+  for (int i = 1; i < width; i++) {
+    dp[i] = (i*height) + dp0;
+    dp[i][0] = i*pgap;
   }
+
   return dp;
 }
 
@@ -243,25 +264,20 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   int n = static_cast<int>(y.length()); // length of gene2
 
   // table for storing optimal substructure answers
-  int **dp = new2d(m + 1, n + 1);
+  int **dp = new2d(m + 1, n + 1, pgap);
   size_t size = m + 1;
   size *= n + 1;
-
-  #pragma omp parallel default(none) shared(dp, m, n, pgap)
-  {
-    #pragma omp for simd nowait
-    for (int i = 0; i <= m; i++) {
-      dp[i][0] = i * pgap;
-    }
-    #pragma omp for
-    for (int i = 0; i <= n; i++) {
-      dp[0][i] = i * pgap;
-    }
+  // int i = 0;
+  // for (i = 0; i <= m; i++) {
+  //   dp[i][0] = i * pgap;
+  // }
+  for (int i = 0; i <= n; i++) {
+    dp[0][i] = i * pgap;
   }
   const int N = m + 1;
   const int M = n + 1;
 
-  diagonalise(dp, M, N, M/(8+5) , N/(8+5) , x, y, pxy, pgap);
+  diagonalise(dp, M, N, M/(22) + 1, N/(22) + 1, x, y, pxy, pgap);
 	// Reconstructing the solution
 	int l = n + m; // maximum possible length
 
