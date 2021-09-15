@@ -9,6 +9,7 @@
 #include <set>
 #include <immintrin.h>
 #include <numa.h>
+#include <omp.h>
 #include "sha512.hh"
 
 using namespace std;
@@ -19,7 +20,7 @@ static std::string getMinimumPenalties(std::string *genes, int k, int pxy, int p
 static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *xans, int *yans);
 
-
+omp_allocator_handle_t alloc_hndl;
 
 /*
 Examples of sha512 which returns a std::string
@@ -38,6 +39,10 @@ static uint64_t GetTimeStamp() {
 
 [[gnu::cold]]
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
+  omp_memspace_handle_t memspace = omp_default_mem_space;
+  omp_alloctrait_t traits[3] = {{omp_atk_alignment, 32}, {omp_atk_sync_hint, omp_atv_serialized}, {omp_atk_partition, omp_atv_interleaved}};
+  alloc_hndl = omp_init_allocator(memspace, 3, traits);
+
   int misMatchPenalty;
   int gapPenalty;
   int k;
@@ -73,6 +78,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   std::cout << std::endl;
 
   // fclose(fp);
+  omp_destroy_allocator(alloc_hndl);
   delete[] genes;
   delete[] penalties;
   return 0;
@@ -113,11 +119,11 @@ inline int min3(int a, int b, int c) {
 // }
 
 static int **new2d (int width, int height, int pgap) {
-  int **dp = new int *[width];
+  int **dp = static_cast<int **>(omp_alloc(sizeof(int *)*width, alloc_hndl));
   size_t size = width;
   size *= height;
 
-  int *dp0 = new int [size];
+  int *dp0 = static_cast<int *>(omp_alloc(sizeof(int)*size, alloc_hndl));
 
   for(size_t i =0; i < size; i++) {
     dp0[i] = 0;
@@ -326,7 +332,7 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
 
 	int ret = dp[m][n];
 
-	delete[] dp[0];
-	delete[] dp;
+  omp_free(dp[0], alloc_hndl);
+  omp_free(dp, alloc_hndl);
   return ret;
 }
