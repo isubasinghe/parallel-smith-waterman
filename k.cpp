@@ -80,6 +80,20 @@ inline int **new2d (int width, int height)
 	size_t size = width;
 	size *= height;
 	int *dp0 = new int [size];
+
+    #pragma omp parallel default(none) shared(dp, dp0, size, width)
+    {
+        #pragma omp for nowait
+        for(int i=0; i < width; i++) {
+            dp[0] = 0;
+        }
+        #pragma omp for
+        for(size_t i=0; i < size; i++) {
+            dp0[i] = 0;
+        }
+    }
+
+
 	dp[0] = dp0;
     // #pragma omp parallel for default(none) shared(dp0, size)
     // for(size_t i=0; i < size; i++) {
