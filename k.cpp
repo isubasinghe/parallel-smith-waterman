@@ -197,8 +197,8 @@ inline void diagonalise(int **dp, int width, int height, int di, int dj, const s
 
         int imax = std::min(inner_i + di, width);
         int jmax = std::min(inner_j + dj, height);
-        for(int i = inner_i; i < imax; i++) {
-          for(int j = inner_j; j < jmax; j++) {
+        for(int j = inner_j; j < jmax; j++) {
+          for(int i = inner_i; i < imax; i++) {
             if(x[j-1] == y[i-1]) {
               dp[j][i] = dp[j-1][i-1];
             }else {
