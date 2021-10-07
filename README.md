@@ -8,7 +8,7 @@ Interesting notes:
 
 Grade:
   - Code: 10/10
-  - Report 9.25/10
+  - [Report](https://github.com/isubasinghe/parallel-smith-waterman/blob/main/code/isithasubasinghe_report.pdf) 9.25/10
 
 Ranking:
   No official rankings were published but I believe this is the **fastest implementation in the cohort**. 
