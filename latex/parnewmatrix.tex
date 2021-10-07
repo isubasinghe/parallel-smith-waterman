@@ -1,0 +1,27 @@
+\begin{algorithm}
+	\caption{Parallel Matrix initialisation}\label{alg:parnewmatrix}
+	\begin{algorithmic}[3]
+		\Procedure{NewMatrix}{}
+		\State $\text{m,n} \gets \text{dimensions of }\textit{matrix}$
+
+		\State $\text{dp} \gets \text{malloc(sizeof(int *)*m)}$
+		\State $\text{size} \gets \textit{m*n}$
+		\State $\text{dp0} \gets \text{malloc(sizeof(int)*size)}$
+		
+		\For{$\text{i} \gets [0 \ldots \text{size}) \textbf{ parallel} $}
+			\State $\text{dp0[0]} \gets 0$
+		\EndFor
+		\For{$\text{i} \gets [0 \ldots m) \textbf{ parallel} $}
+			\State $\text{dp[0]} \gets 0$
+		\EndFor
+		
+		\State $\text{dp[0]} \gets \text{dp0}$
+		
+		\For{$\text{i} \gets [1 \ldots m) $}
+		\State $\text{dp[0]} \gets \text{dp[i-1] + n}$
+		\EndFor
+		
+		\State $\textbf{return } \text{dp}$
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}

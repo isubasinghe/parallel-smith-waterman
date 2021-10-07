@@ -1,0 +1,57 @@
+
+
+\begin{algorithm}
+\caption{Parallel Smith-Waterman}\label{alg:parsmith}
+\begin{algorithmic}[1]
+\Procedure{ParSmithWaterman}{}
+\State $\text{m,n} \gets \text{dimensions of }\textit{matrix}$
+\State $pgap \gets \textit{gap penalty}$
+\State $pxy \gets \textit{mismatch penalty}$
+\State $\delta_i \gets \textit{tile width}$
+\State $\delta_j \gets \textit{tile height}$
+\State $outer_i \gets 0$
+\State $outer_j \gets 0$
+\State $diagonals \gets \floor{\frac{m}{\delta_i}} + \floor{\frac{n}{\delta_j}} + \begin{cases} 
+      1 & m\%\delta_i + n\%\delta_j > 0 \\
+      0 & m\%\delta_i + n\%\delta_j = 0 \\
+    \end{cases}$
+\State $\text{dp[m][n]} \gets \text{NewMatrix(m+1,n+1)}$
+\State $\text{x} \gets \textit{sequence x}$
+\State $\text{y} \gets \textit{sequence y}$
+\For{$\text{i} \gets [0 \ldots m] \textbf{ parallel} $}
+    \State $\text{dp[i][0]} \gets \text{i} * \text{pgap}$
+\EndFor
+\For{$\text{i} \gets [0 \ldots n] \textbf{ parallel}$}
+    \State $\text{dp[0][i]} \gets \text{i} * \text{pgap}$
+\EndFor
+\For{$\text{i} \gets [0 \ldots diagonals)$}
+    \State $diff_i \gets outer_i$
+    \State $diff_j \gets n-outer_j-1$
+    \State $diag_i \gets 1 + \floor{\frac{diff_i}{\delta_i}}$
+    \State $diag_j \gets 1 + \floor{\frac{diff_j}{\delta_j}}$
+    \State $length \gets min(diag_i, diag_j)$
+    \For{$\text{tile} \gets [0 \ldots length) \textbf{ parallel} $}
+        \State $inner_i \gets max(1, outer_i - (tile*\delta_i))$
+        \State $inner_j \gets max(1, outer_j + (tile*\delta_j))$
+    	\State $imax \gets max(inner_i + \delta_i, width)$
+    	\State $jmax \gets max(inner_j + \delta_j, height)$
+    	\For{$\text{i} \gets [inner_i \ldots imax]$}
+            \For{$\text{j} \gets [inner_j \ldots jmax]$}
+        	    \If{$\text{x[i-1]} = \text{y[j-1]}$}
+        		    \State $\text{dp[i][j]} = \text{dp[i-1][j-1]}$
+        	    \Else
+        		    \State $\text{dp[i][j]} = \text{min(dp[j-1][i-1] + pxy, dp[j-1][i] + pgap, dp[j][i-1] + pgap)}$
+        	    \EndIf
+            \EndFor
+        \EndFor
+    \EndFor
+    \If{$outer_i + \delta_i < m$}
+        \State $outer_i \gets outer_i + \delta_i$
+    \Else
+        \State $outer_j \gets outer_j + \delta_j$
+    \EndIf
+\EndFor
+\textbf{return } \text{traceback(dp)}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}

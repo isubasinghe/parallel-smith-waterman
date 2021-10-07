@@ -1,0 +1,29 @@
+\begin{algorithm}
+\caption{Sequential Smith-Waterman}\label{alg:naive}
+\begin{algorithmic}[1]
+\Procedure{SeqSmithWaterman}{}
+\State $\text{m,n} \gets \text{dimensions of }\textit{matrix}$
+\State $pgap \gets \textit{gap penalty}$
+\State $pxy \gets \textit{mismatch penalty}$
+\State $\text{dp[m][n]} \gets \text{newMatrix(m+1,n+1)}$
+\State $\text{x} \gets \textit{sequence x}$
+\State $\text{y} \gets \textit{sequence y}$
+\For{$\text{i} \gets [0 \ldots m] $}
+    \State $\text{dp[i][0]} \gets \text{i} * \text{pgap}$
+\EndFor
+\For{$\text{i} \gets [0 \ldots n] $}
+    \State $\text{dp[0][i]} \gets \text{i} * \text{pgap}$
+\EndFor
+\For{$\text{i} \gets [1 \ldots m]$}
+    \For{$\text{j} \gets [1 \ldots n]$}
+    	\If{$\text{x[i-1]} = \text{y[j-1]}$}
+    		\State $\text{dp[i][j]} = \text{dp[i-1][j-1]}$
+    	\Else
+    		\State $\text{dp[i][j]} = \text{min(dp[j-1][i-1] + pxy, dp[j-1][i] + pgap, dp[j][i-1] + pgap)}$
+    	\EndIf
+    \EndFor
+\EndFor
+\textbf{return } \text{traceback(dp)}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
