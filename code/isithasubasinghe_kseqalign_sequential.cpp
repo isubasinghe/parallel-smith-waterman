@@ -7,9 +7,6 @@
 #include <iostream>
 #include <string>
 #include <set>
-#include <immintrin.h>
-#include <numa.h>
-#include <omp.h>
 #include "sha512.hh"
 
 using namespace std;
@@ -20,7 +17,7 @@ static std::string getMinimumPenalties(std::string *genes, int k, int pxy, int p
 static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
                       int *xans, int *yans);
 
-omp_allocator_handle_t alloc_hndl;
+
 
 /*
 Examples of sha512 which returns a std::string
@@ -39,16 +36,12 @@ static uint64_t GetTimeStamp() {
 
 [[gnu::cold]]
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
-  omp_memspace_handle_t memspace = omp_default_mem_space;
-  omp_alloctrait_t traits[3] = {{omp_atk_alignment, 32}, {omp_atk_sync_hint, omp_atv_serialized}, {omp_atk_partition, omp_atv_interleaved}};
-  alloc_hndl = omp_init_allocator(memspace, 3, traits);
-
   int misMatchPenalty;
   int gapPenalty;
   int k;
   // FILE *fp = freopen("mseq.dat", "r", stdin);
   // #ifdef DEBUG_BUILD
-  // freopen("mseq.dat", "r", stdin);
+  // freopen("mseq-simple.dat", "r", stdin);
   // #endif
   std::cin >> misMatchPenalty;
   std::cin >> gapPenalty;
@@ -78,7 +71,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   std::cout << std::endl;
 
   // fclose(fp);
-  omp_destroy_allocator(alloc_hndl);
   delete[] genes;
   delete[] penalties;
   return 0;
@@ -93,49 +85,18 @@ inline int min3(int a, int b, int c) {
 // equivalent of  int *dp[width] = new int[height][width]
 // but works for width not known at compile time.
 // (Delete structure by  delete[] dp[0]; delete[] dp;)
-// static int **new2d(int width, int height) {
-//   int **dp = new int *[width];
-//   size_t size = width;
-//   size *= height;
-//   // not catching malloc error
-//   // as it is not reliable due to overcommitting etc.
-//   int *dp0 = new int[size];
-//   dp[0] = dp0;
-
-//   #pragma omp parallel default(none) shared(dp0, size, dp, width, height)
-//   {
-
-//     #pragma omp for nowait
-//     for(size_t i=0; i < size; i++) {
-//       dp0[i] = 0;
-//     }
-
-//     #pragma omp for
-//     for (int i = 1; i < width; i++) {
-//       dp[i] = i*height + dp0;
-//     }
-//   }
-//   return dp;
-// }
-
-static int **new2d (int width, int height, int pgap) {
-  int **dp = static_cast<int **>(omp_alloc(sizeof(int *)*width, alloc_hndl));
+static int **new2d(int width, int height) {
+  int **dp = new int *[width];
   size_t size = width;
   size *= height;
-
-  int *dp0 = static_cast<int *>(omp_alloc(sizeof(int)*size, alloc_hndl));
-
-  for(size_t i =0; i < size; i++) {
-    dp0[i] = 0;
-  }
-
+  // not catching malloc error
+  // as it is not reliable due to overcommitting etc.
+  int *dp0 = new int[size];
   dp[0] = dp0;
 
   for (int i = 1; i < width; i++) {
-    dp[i] = (i*height) + dp0;
-    dp[i][0] = i*pgap;
+    dp[i] = i*height + dp0;
   }
-
   return dp;
 }
 
@@ -207,58 +168,6 @@ static std::string getMinimumPenalties(std::string *genes, int k, int pxy, int p
 }
 
 
-[[gnu::always_inline]] [[gnu::hot]]
-inline void diagonalise(int **dp, int width, int height, int di, int dj, const std::string &x, const std::string &y, int pxy, int pgap) {
-  int new_width = width / di;
-  int new_height = height / dj;
-
-  int diagonals = new_width + new_height + ((width%di  + height%dj) > 0 ? 1 : 0);
-
-  int outer_i = 0;
-  int outer_j = 0;
-
-  int diff_i = 0;
-  int diff_j = 0;
-  int diag_i = 0;
-  int diag_j = 0;
-  int length = 0;
-
-  {
-    for(int d = 0; d < diagonals; d++) {
-      diff_i = outer_i;
-      diff_j = height - outer_j -1;
-
-      diag_i = 1 + (diff_i / di);
-      diag_j = 1 + (diff_j / dj);
-      length = std::min(diag_i, diag_j);
-
-      #pragma omp parallel for schedule(dynamic) default(none) shared(x, y, dp, di, dj, pgap, pxy, length, width, height, outer_i, outer_j)
-      for(int tile=0; tile < length; tile++) {
-        int inner_i = std::max(1, outer_i - (tile * di));
-        int inner_j = std::max(1, outer_j + (tile * dj));
-
-        int imax = std::min(inner_i + di, width);
-        int jmax = std::min(inner_j + dj, height);
-        for(int i = inner_i; i < imax; i++) {
-          for(int j = inner_j; j < jmax; j++) {
-            if(x[j-1] == y[i-1]) {
-              dp[j][i] = dp[j-1][i-1];
-            }else {
-              dp[j][i] = min3(dp[j-1][i-1] + pxy, dp[j-1][i] + pgap, dp[j][i-1] + pgap);
-            }
-          }
-        }
-      }
-
-      if (outer_i + di < width) {
-        outer_i += di;
-      }else {
-        outer_j += dj;
-      }
-    }
-  }
-}
-
 // function to find out the minimum penalty
 // return the minimum penalty and put the aligned sequences in xans and yans
 [[gnu::hot]]
@@ -270,20 +179,27 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
   int n = static_cast<int>(y.length()); // length of gene2
 
   // table for storing optimal substructure answers
-  int **dp = new2d(m + 1, n + 1, pgap);
+  int **dp = new2d(m + 1, n + 1);
   size_t size = m + 1;
   size *= n + 1;
-  // int i = 0;
-  // for (i = 0; i <= m; i++) {
-  //   dp[i][0] = i * pgap;
-  // }
+  memset(dp[0], 0, size);
+
+  for (int i = 0; i <= m; i++) {
+    dp[i][0] = i * pgap;
+  }
   for (int i = 0; i <= n; i++) {
     dp[0][i] = i * pgap;
   }
-  const int N = m + 1;
-  const int M = n + 1;
 
-  diagonalise(dp, M, N, M/(22) + 1, N/(22) + 1, x, y, pxy, pgap);
+  for (int i = 1; i <= m; i++){
+    for (int j = 1; j <= n; j++){
+      if (x[i - 1] == y[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      }else{
+        dp[i][j] = min3(dp[i - 1][j - 1] + pxy ,dp[i - 1][j] + pgap ,dp[i][j - 1] + pgap);
+      }
+    }
+  }
 	// Reconstructing the solution
 	int l = n + m; // maximum possible length
 
@@ -332,7 +248,7 @@ static int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap,
 
 	int ret = dp[m][n];
 
-  omp_free(dp[0], alloc_hndl);
-  omp_free(dp, alloc_hndl);
+	delete[] dp[0];
+	delete[] dp;
   return ret;
 }
